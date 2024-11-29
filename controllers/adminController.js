@@ -92,3 +92,25 @@ export const updateStatus = expressAsyncHandler(async (req, res) => {
     },
   });
 });
+
+// DELETE
+// Delete User
+export const deleteUser = expressAsyncHandler(async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) {
+    res.status(400);
+    throw new Error('Required fields are missing');
+  }
+  const userData = await userModel.findById(userId);
+  if (!userData) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  await userModel.findByIdAndDelete(userId);
+
+  res.status(200).json({
+    message: 'User deleted',
+    success: true,
+  });
+});

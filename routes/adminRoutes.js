@@ -5,6 +5,7 @@ import {
   adminLogin,
   getUsers,
   updateStatus,
+  deleteUser,
 } from '../controllers/adminController.js';
 import {
   authorizeAdmin,
@@ -21,5 +22,8 @@ router.route('/users').get(isAuthenticated, authorizeAdmin, getUsers);
 
 // PUT
 router.route('/status').put(isAuthenticated, authorizeAdmin, updateStatus);
+
+// DELETE
+router.route('/delete').delete(isAuthenticated, authorizeAdmin, deleteUser);
 
 export default router;
