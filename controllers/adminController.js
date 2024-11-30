@@ -3,6 +3,7 @@ import expressAsyncHandler from 'express-async-handler';
 // Models
 import adminModel from '../models/adminModel.js';
 import userModel from '../models/userModel.js';
+import historyModel from '../models/historyModel.js';
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -107,6 +108,7 @@ export const deleteUser = expressAsyncHandler(async (req, res) => {
     throw new Error('User not found');
   }
 
+  await historyModel.deleteMany({ user: userId });
   await userModel.findByIdAndDelete(userId);
 
   res.status(200).json({
