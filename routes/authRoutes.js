@@ -6,9 +6,14 @@ import {
   verifyOTP,
   generateAccessFromRefresh,
   checkUser,
+  verifyCode,
+  getProfile,
 } from '../controllers/authController.js';
 // Middleware
-import { isAuthenticated } from '../middlewares/authMiddleware.js';
+import {
+  authorizeUser,
+  isAuthenticated,
+} from '../middlewares/authMiddleware.js';
 
 // --------------------------------------------------------------------------
 
@@ -22,6 +27,12 @@ router.route('/check').post(checkUser);
 router.route('/verify-otp').post(verifyOTP);
 
 // POST
+router.route('/verify-code').post(verifyCode);
+
+// POST
 router.route('/refresh-access').post(generateAccessFromRefresh);
+
+// GET
+router.route('/me').get(isAuthenticated, authorizeUser, getProfile);
 
 export default router;

@@ -1,47 +1,79 @@
 // Packages
 import expressAsyncHandler from 'express-async-handler';
+import speakeasy from 'speakeasy';
 // Models
 import userModel from '../models/userModel.js';
+import historyModel from '../models/historyModel.js';
 // Helper
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyToken,
 } from '../helpers/authHelper.js';
-import historyModel from '../models/historyModel.js';
 
 // --------------------------------------------------------------------------
 
 // POST
 // Send OTP
 export const sendOTP = expressAsyncHandler(async (req, res) => {
-  const { email, password, confirmPassword } = req.body;
-  if (!email || !password || !confirmPassword) {
+  const { auth } = req.query;
+  if (!auth) {
     res.status(400);
-    throw new Error('Required fields are missing(email, password)');
+    throw new Error('Required fields are missing(auth)');
   }
-  if (password !== confirmPassword) {
+  if (auth === 'signup') {
+    const { email, password, confirmPassword } = req.body;
+    if (!email || !password || !confirmPassword) {
+      res.status(400);
+      throw new Error('Required fields are missing(email, password)');
+    }
+    if (password !== confirmPassword) {
+      res.status(400);
+      throw new Error('Passwords do not match');
+    }
+    const userData = await userModel.findOne({ email });
+    if (userData) {
+      res.status(400);
+      throw new Error('User already exists');
+    }
+
+    const otp = Math.floor(Math.random() * 1000000);
+
+    await userModel.create({
+      email,
+      password,
+      otp,
+    });
+
+    res.status(200).json({
+      message: `Your OTP is ${otp}`,
+      success: true,
+    });
+  } else if (auth === 'login') {
+    const { email } = req.body;
+    if (!email) {
+      res.status(400);
+      throw new Error('Required fields are missing(email)');
+    }
+    const userData = await userModel.findOne({ email });
+    if (!userData) {
+      res.status(400);
+      throw new Error('User doesnot exists');
+    }
+
+    const otp = Math.floor(Math.random() * 1000000);
+
+    userData.otp = otp;
+    await userData.save();
+
+    res.status(200).json({
+      message: `Your OTP is ${otp}`,
+      success: true,
+    });
+  } else {
     res.status(400);
-    throw new Error('Passwords do not match');
+    throw new Error('Invalid auth');
   }
-  const userData = await userModel.findOne({ email });
-  if (userData) {
-    res.status(400);
-    throw new Error('User already exists');
-  }
-
-  const otp = Math.floor(Math.random() * 1000000);
-
-  await userModel.create({
-    email,
-    password,
-    otp,
-  });
-
-  res.status(200).json({
-    message: `Your OTP is ${otp}`,
-    success: true,
-  });
 });
 
 // POST
@@ -81,10 +113,6 @@ export const verifyOTP = expressAsyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('User not found');
   }
-  if (userData.otpVerified) {
-    res.status(400);
-    throw new Error('User already verified');
-  }
   if (userData.otp !== otp) {
     res.status(400);
     throw new Error('Invalid OTP');
@@ -104,6 +132,49 @@ export const verifyOTP = expressAsyncHandler(async (req, res) => {
 
   res.status(200).json({
     message: 'User verified successfully',
+    success: true,
+    accessToken,
+    refreshToken,
+  });
+});
+
+// POST
+// Login
+export const verifyCode = expressAsyncHandler(async (req, res) => {
+  const { code, email } = req.body;
+  if (!email) {
+    res.status(400);
+    throw new Error('Required fields are missing(code, email)');
+  }
+
+  const userData = await userModel.findOne({ email: email });
+  if (!userData) {
+    res.status(401);
+    throw new Error('User not found');
+  }
+
+  const secret = userData.twoFASecret;
+  // Verify the provided token with the stored secret
+  const verified = await speakeasy.totp.verify({
+    secret: secret,
+    encoding: 'base32',
+    token: code,
+  });
+  if (!verified) {
+    res.status(400);
+    throw new Error('Invalid 2FA Code');
+  }
+  const accessToken = generateAccessToken(userData, 'user');
+  const refreshToken = generateRefreshToken(userData, 'user');
+
+  await historyModel.create({
+    user: userData.id,
+    mode: '2FA',
+    lastLogin: Date.now(),
+  });
+
+  res.status(200).json({
+    message: '2FA verified successfully',
     success: true,
     accessToken,
     refreshToken,
@@ -150,3 +221,17 @@ export const generateAccessFromRefresh = expressAsyncHandler(
     }
   }
 );
+
+// GET
+// Profile
+export const getProfile = expressAsyncHandler(async (req, res) => {
+  const userData = await userModel
+    .findById(req.user.id)
+    .select('-password -twoFASecret -otp -otpVerified');
+  if (!userData) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  res.status(200).json({ data: userData });
+});
