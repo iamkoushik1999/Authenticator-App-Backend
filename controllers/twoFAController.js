@@ -4,12 +4,6 @@ import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 // Models
 import userModel from '../models/userModel.js';
-import historyModel from '../models/historyModel.js';
-import {
-  generateAccessToken,
-  generateRefreshToken,
-} from '../helpers/authHelper.js';
-
 // --------------------------------------------------------------------------
 
 // POST
@@ -43,28 +37,16 @@ export const generate2FACode = expressAsyncHandler(async (req, res) => {
 // POST
 // Verify 2 Factor Code
 export const verify2FACode = expressAsyncHandler(async (req, res) => {
-  const { code, email, password } = req.body;
-  if (!email || !password) {
+  const { code } = req.body;
+  if (!code) {
     res.status(400);
-    throw new Error('Required fields are missing(email, password)');
+    throw new Error('Required fields are missing(code)');
   }
 
-  const userData = await userModel.findOne({ email: email });
+  const userData = await userModel.findById(req.user._id);
   if (!userData) {
     res.status(401);
-    throw new Error('Invalid email or password');
-  }
-  const { password: pass, ...user } = userData._doc;
-
-  const checkPassword = await userData.comparePassword(password);
-  if (!checkPassword) {
-    res.status(400);
-    throw new Error('Invalid user credential');
-  }
-
-  if (!userData.otpVerified) {
-    res.status(400);
-    throw new Error('User not otp verified');
+    throw new Error('Invalid User');
   }
 
   const secret = userData.twoFASecret;
@@ -83,19 +65,8 @@ export const verify2FACode = expressAsyncHandler(async (req, res) => {
   userData.isVerified = true;
   await userData.save();
 
-  const accessToken = generateAccessToken(userData);
-  const refreshToken = generateRefreshToken(userData);
-
-  await historyModel.create({
-    email: userData.email,
-    mode: '2FA',
-    lastLogin: Date.now(),
-  });
-
   res.status(200).json({
     message: '2FA verified successfully',
     success: true,
-    accessToken,
-    refreshToken,
   });
 });

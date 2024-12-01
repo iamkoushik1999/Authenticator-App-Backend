@@ -14,11 +14,9 @@ import {
 // --------------------------------------------------------------------------
 
 // POST
-router
-  .route('/generate')
-  .post(isAuthenticated, authorizeUser, generate2FACode);
+router.route('/generate').post(isAuthenticated, authorizeUser, generate2FACode);
 
 // POST
-router.route('/verify').post(verify2FACode);
+router.route('/verify').post(isAuthenticated, authorizeUser, verify2FACode);
 
 export default router;
