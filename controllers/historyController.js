@@ -8,7 +8,9 @@ import historyModel from '../models/historyModel.js';
 // GET
 // Get History
 export const getHistory = expressAsyncHandler(async (req, res) => {
-  const history = await historyModel.find({ user: req.user.id });
+  const history = await historyModel
+    .find({ user: req.user.id })
+    .sort({ lastLogin: -1 });
 
   res.status(200).json({ data: history });
 });

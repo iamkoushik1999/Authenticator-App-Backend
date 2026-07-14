@@ -1,13 +1,15 @@
-import app from './app.js';
+import app from "./app.js";
 const { NODE_ENV } = process.env;
-import colors from 'colors';
+import colors from "colors";
 
 // Test
-app.get('/', (req, res) => {
-  res.send(`GolfPro -> Server Running Successfully on "${NODE_ENV}"!`);
+app.get("/", (req, res) => {
+  res.send(
+    `Authenticator App -> Server Running Successfully on "${NODE_ENV}"!`,
+  );
 });
 
-if (NODE_ENV === 'production') {
+if (NODE_ENV === "production") {
   app.listen(5000, () => {
     console.log(`SERVER RUNNING ON :-> "${NODE_ENV}"!`.cyan.underline);
     console.log(`SERVER LISTENING ON PORT :-> ${5000}!`.cyan.underline);
